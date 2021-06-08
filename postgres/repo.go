@@ -7,7 +7,7 @@ type Repo struct {
 	DB *sql.DB
 }
 
-func newRepo(db *sql.DB) *Repo {
+func NewRepo(db *sql.DB) *Repo {
 	return &Repo{
 		DB:      db,
 		Queries: New(db),

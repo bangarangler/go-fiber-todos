@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"strconv"
 
-	"github.com/go-fiber-todos/postgres"
+	"github.com/bangarangler/go-fiber-todos/postgres"
 	"github.com/gofiber/fiber"
 	"github.com/gofiber/fiber/middleware"
 	_ "github.com/lib/pq"
@@ -30,7 +30,7 @@ func NewHandlers(repo *postgres.Repo) *Handlers {
 }
 
 func main() {
-	db, err := sql.Open(postgres.PgConnStr)
+	db, err := sql.Open("postgres", postgres.PgConnStr)
 	if err != nil {
 		panic(err)
 	}
