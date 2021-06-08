@@ -1,0 +1,14 @@
+version: '3'
+services:
+  database:
+    image: "postgres"
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - go-fiber-todos:/var/lib/postgresql/data/
+
+
+volumes:
+  go-fiber-todos:
