@@ -5,7 +5,7 @@
       "path": "postgres",
       "queries": "./postgres/query/",
       "schema": "./postgres/migrations/",
-      "emit_json_tags": true,
+      "emit_json_tags": false,
       "emit_prepared_queries": true,
       "emit_interface": false,
       "emit_exact_table_names": false,

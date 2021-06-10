@@ -10,15 +10,27 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type Todo struct {
-	Id        int    `json:"id"`
-	Name      string `json:"name"`
-	Completed bool   `json:"completed"`
-}
+// type Todo struct {
+// 	Id        int    `json:"id"`
+// 	Name      string `json:"name"`
+// 	Completed bool   `json:"completed"`
+// }
+//
+// var todos = []*Todo{
+// 	{Id: 1, Name: "walk the dog", Completed: false},
+// 	{Id: 2, Name: "walk the cat", Completed: false},
+// }
 
-var todos = []*Todo{
-	{Id: 1, Name: "walk the dog", Completed: false},
-	{Id: 2, Name: "walk the cat", Completed: false},
+func mapTodo(todo postgres.Todo) interface{} {
+	return struct {
+		ID        int64  `json:"id"`
+		Name      string `json:"name"`
+		Completed bool   `json:"completed"`
+	}{
+		ID:        todo.ID,
+		Name:      todo.Name,
+		Completed: todo.Completed.Bool,
+	}
 }
 
 type Handlers struct {
@@ -65,24 +77,28 @@ func SetupTodosRoutes(grp fiber.Router, handlers *Handlers) {
 	todosRoutes := grp.Group("/todos")
 
 	todosRoutes.Get("/", handlers.GetTodos)
-	todosRoutes.Get("/:id", GetTodo)
-	todosRoutes.Post("/", CreateTodo)
-	todosRoutes.Delete("/:id", DeleteTodo)
-	todosRoutes.Patch("/:id", UpdateTodo)
+	todosRoutes.Get("/:id", handlers.GetTodo)
+	todosRoutes.Post("/", handlers.CreateTodo)
+	todosRoutes.Delete("/:id", handlers.DeleteTodo)
+	todosRoutes.Patch("/:id", handlers.UpdateTodo)
 }
 
 func (h *Handlers) GetTodos(ctx *fiber.Ctx) {
-	tts, err := h.Repo.GetAllTodos(ctx.Context())
+	todos, err := h.Repo.GetAllTodos(ctx.Context())
 	if err != nil {
 		ctx.Status(fiber.StatusInternalServerError).Send(err.Error())
 		return
 	}
-	if err := ctx.Status(fiber.StatusOK).JSON(tts); err != nil {
+	result := make([]interface{}, len(todos))
+	for i, todo := range todos {
+		result[i] = mapTodo(todo)
+	}
+	if err := ctx.Status(fiber.StatusOK).JSON(result); err != nil {
 		return
 	}
 }
 
-func CreateTodo(ctx *fiber.Ctx) {
+func (h *Handlers) CreateTodo(ctx *fiber.Ctx) {
 	type request struct {
 		Name string `json:"name"`
 	}
@@ -95,17 +111,33 @@ func CreateTodo(ctx *fiber.Ctx) {
 		return
 	}
 
-	todo := &Todo{
-		Id:        len(todos) + 1,
-		Name:      body.Name,
-		Completed: false,
+	if len(body.Name) <= 2 {
+		ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "name not long enough",
+		})
+		return
 	}
 
-	todos = append(todos, todo)
-	ctx.Status(fiber.StatusCreated).JSON(todo)
+	todo, err := h.Repo.CreateTodo(ctx.Context(), body.Name)
+	if err != nil {
+		ctx.Status(fiber.StatusInternalServerError).Send(err.Error())
+		return
+	}
+	// todo := &Todo{
+	// 	Id:        len(todos) + 1,
+	// 	Name:      body.Name,
+	// 	Completed: false,
+	// }
+	//
+	// todos = append(todos, todo)
+	// ctx.Status(fiber.StatusCreated).JSON(todo)
+	if err := ctx.Status(fiber.StatusCreated).JSON(mapTodo(todo)); err != nil {
+		ctx.Status(fiber.StatusInternalServerError).Send(err.Error())
+		return
+	}
 }
 
-func GetTodo(ctx *fiber.Ctx) {
+func (h *Handlers) GetTodo(ctx *fiber.Ctx) {
 	paramsId := ctx.Params("id")
 	id, err := strconv.Atoi(paramsId)
 	if err != nil {
@@ -114,17 +146,24 @@ func GetTodo(ctx *fiber.Ctx) {
 		})
 		return
 	}
-	for _, todo := range todos {
-		if todo.Id == id {
-			ctx.Status(fiber.StatusOK).JSON(todo)
-			return
-		}
+	todo, err := h.Repo.GetTodoById(ctx.Context(), int64(id))
+	if err != nil {
+		ctx.Status(fiber.StatusNotFound)
+		return
 	}
-
-	ctx.Status(fiber.StatusNotFound)
+	// for _, todo := range todos {
+	// 	if todo.Id == id {
+	// 		ctx.Status(fiber.StatusOK).JSON(todo)
+	// 		return
+	// 	}
+	// }
+	if err := ctx.Status(fiber.StatusOK).JSON(mapTodo(todo)); err != nil {
+		ctx.Status(fiber.StatusInternalServerError).Send(err.Error())
+		return
+	}
 }
 
-func DeleteTodo(ctx *fiber.Ctx) {
+func (h *Handlers) DeleteTodo(ctx *fiber.Ctx) {
 	paramsId := ctx.Params("id")
 	id, err := strconv.Atoi(paramsId)
 	if err != nil {
@@ -133,19 +172,29 @@ func DeleteTodo(ctx *fiber.Ctx) {
 		})
 		return
 	}
-
-	for i, todo := range todos {
-		if todo.Id == id {
-			todos = append(todos[0:i], todos[i+1:]...)
-			ctx.Status(fiber.StatusNoContent)
-			return
-		}
+	_, err = h.Repo.GetTodoById(ctx.Context(), int64(id))
+	if err != nil {
+		ctx.Status(fiber.StatusNotFound)
+		return
 	}
 
-	ctx.Status(fiber.StatusNotFound)
+	// for i, todo := range todos {
+	// 	if todo.Id == id {
+	// 		todos = append(todos[0:i], todos[i+1:]...)
+	// 		ctx.Status(fiber.StatusNoContent)
+	// 		return
+	// 	}
+	// }
+	err = h.Repo.DeleteTodoById(ctx.Context(), int64(id))
+	if err != nil {
+		ctx.Status(fiber.StatusNoContent)
+		return
+	}
+
+	ctx.Status(fiber.StatusNoContent)
 }
 
-func UpdateTodo(ctx *fiber.Ctx) {
+func (h *Handlers) UpdateTodo(ctx *fiber.Ctx) {
 	type request struct {
 		Name      *string `json:"name"`
 		Completed *bool   `json:"completed"`
@@ -168,16 +217,8 @@ func UpdateTodo(ctx *fiber.Ctx) {
 		return
 	}
 
-	var todo *Todo
-
-	for _, t := range todos {
-		if t.Id == id {
-			todo = t
-			break
-		}
-	}
-
-	if todo == nil {
+	todo, err := h.Repo.GetTodoById(ctx.Context(), int64(id))
+	if err != nil {
 		ctx.Status(fiber.StatusNotFound)
 		return
 	}
@@ -187,9 +228,46 @@ func UpdateTodo(ctx *fiber.Ctx) {
 	}
 
 	if body.Completed != nil {
-		todo.Completed = *body.Completed
+		todo.Completed = sql.NullBool{
+			Bool:  *body.Completed,
+			Valid: true,
+		}
 	}
 
+	todo, err = h.Repo.UpdateTodo(ctx.Context(), postgres.UpdateTodoParams{
+		ID:        int64(id),
+		Name:      todo.Name,
+		Completed: todo.Completed,
+	})
+	// var todo *Todo
+	//
+	// for _, t := range todos {
+	// 	if t.Id == id {
+	// 		todo = t
+	// 		break
+	// 	}
+	// }
+
+	// if todo == nil {
+	// 	ctx.Status(fiber.StatusNotFound)
+	// 	return
+	// }
+	//
+	// if body.Name != nil {
+	// 	todo.Name = *body.Name
+	// }
+	//
+	// if body.Completed != nil {
+	// 	todo.Completed = *body.Completed
+	// }
+
 	// think todo is updated but
-	ctx.Status(fiber.StatusOK).JSON(todo)
+	if err != nil {
+		ctx.SendStatus(fiber.StatusNotFound)
+		return
+	}
+	if err := ctx.Status(fiber.StatusOK).JSON(mapTodo(todo)); err != nil {
+		ctx.Status(fiber.StatusInternalServerError).Send(err.Error())
+		return
+	}
 }

@@ -4,11 +4,11 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
+	// "os"
+	// "os/exec"
 	"runtime"
 
-	"github.com/magefile/mage/mg" // mg contains helpful utility functions, like Deps
+	// "github.com/magefile/mage/mg" // mg contains helpful utility functions, like Deps
 	"github.com/magefile/mage/sh"
 )
 
@@ -16,21 +16,25 @@ import (
 // If not set, running mage will list available targets
 // var Default = Build
 
+// Migrate DB
 func Migrate() {
 	fmt.Print("running migrations")
 	sh.Run("migrate", "-source", "file://postgres/migrations", "-database", "postgres://jonp:jonp@localhost:5432/go_fiber_todos_db?sslmode=disable", "up")
 }
 
+// Rollback Database
 func Rollback() {
 	fmt.Print("rolling back migrations")
 	sh.Run("migrate", "-source", "file://postgres/migrations", "-database", "postgres://jonp:jonp@localhost:5432/go_fiber_todos_db?sslmode=disable", "down")
 }
 
+// Drop database
 func Drop() {
 	fmt.Print("rolling back migrations")
 	sh.Run("migrate", "-source", "file://postgres/migrations", "-database", "postgres://jonp:jonp@localhost:5432/go_fiber_todos_db?sslmode=disable", "drop")
 }
 
+// provide name for migrations -> generate .up and .down
 func Migration() {
 	var name string
 	fmt.Print("Enter Migation name: ")
@@ -39,6 +43,7 @@ func Migration() {
 	sh.Run("migrate", "create", "-ext", "sql", "-dir", "postgres/migrations", name)
 }
 
+// Generate sql with sqlc
 func SQLCGen() error {
 	fmt.Println("sqlc generating queries...")
 	system := runtime.GOOS
@@ -55,30 +60,26 @@ func SQLCGen() error {
 	return nil
 }
 
-// A build step that requires additional params, or platform specific steps for example
-func Build() error {
-	mg.Deps(InstallDeps)
-	fmt.Println("Building...")
-	cmd := exec.Command("go", "build", "-o", "MyApp", ".")
-	return cmd.Run()
-}
+// func Build() error {
+// 	mg.Deps(InstallDeps)
+// 	fmt.Println("Building...")
+// 	cmd := exec.Command("go", "build", "-o", "MyApp", ".")
+// 	return cmd.Run()
+// }
 
-// A custom install step if you need your bin someplace other than go/bin
-func Install() error {
-	mg.Deps(Build)
-	fmt.Println("Installing...")
-	return os.Rename("./MyApp", "/usr/bin/MyApp")
-}
+// func Install() error {
+// 	mg.Deps(Build)
+// 	fmt.Println("Installing...")
+// 	return os.Rename("./MyApp", "/usr/bin/MyApp")
+// }
 
-// Manage your deps, or running package managers.
-func InstallDeps() error {
-	fmt.Println("Installing Deps...")
-	cmd := exec.Command("go", "get", "github.com/stretchr/piglatin")
-	return cmd.Run()
-}
+// func InstallDeps() error {
+// 	fmt.Println("Installing Deps...")
+// 	cmd := exec.Command("go", "get", "github.com/stretchr/piglatin")
+// 	return cmd.Run()
+// }
 
-// Clean up after yourself
-func Clean() {
-	fmt.Println("Cleaning...")
-	os.RemoveAll("MyApp")
-}
+// func Clean() {
+// 	fmt.Println("Cleaning...")
+// 	os.RemoveAll("MyApp")
+// }

@@ -7,7 +7,7 @@ import (
 )
 
 type Todo struct {
-	ID        int64        `json:"id"`
-	Name      string       `json:"name"`
-	Completed sql.NullBool `json:"completed"`
+	ID        int64
+	Name      string
+	Completed sql.NullBool
 }

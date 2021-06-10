@@ -1,7 +1,7 @@
 #!/bin/zsh
 
-curl -X POST http://localhost:3000/todos \
+curl -X POST http://localhost:3000/v1/todos \
   -H "Content-Type: application/json" \
-  -d '{"name": "new todo from curl"}' \
+  -d '{"name": "walk the fish"}' \
   -v | jq
 

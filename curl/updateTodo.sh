@@ -1,8 +1,8 @@
 #!/bin/zsh
 
-curl -X PATCH http://localhost:3000/todos/2 \
+curl -X PATCH http://localhost:3000/v1/todos/1 \
   -H "Content-Type: application/json" \
-  -d '{"completed": true}' \
+  -d '{"name": "updated walk the dog!"}' \
   -v | jq
 
 
